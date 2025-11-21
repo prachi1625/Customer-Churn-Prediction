@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Churn Prediction System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #1e293b 0%, #312e81 50%, #1e293b 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .header { text-align: center; padding: 40px 0; color: white; }
+        .header-icon { width: 64px; height: 64px; background: rgba(99, 102, 241, 0.2); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 32px; }
+        .header h1 { font-size: 2rem; margin-bottom: 8px; }
+        .header p { color: #a5b4fc; }
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+        .stat-card { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 12px; padding: 20px; text-align: center; color: white; }
+        .stat-card .icon { font-size: 24px; margin-bottom: 8px; }
+        .stat-card .value { font-size: 2rem; font-weight: bold; }
+        .stat-card .label { font-size: 0.75rem; color: #9ca3af; }
+        .card { background: white; border-radius: 16px; padding: 32px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+        .card-header { display: flex; align-items: center; margin-bottom: 24px; }
+        .card-header h2 { font-size: 1.25rem; color: #1f2937; margin-left: 8px; }
+        .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        @media (max-width: 768px) { .form-grid { grid-template-columns: repeat(2, 1fr); } .stats { grid-template-columns: 1fr; } }
+        .form-group { margin-bottom: 8px; }
+        .form-group label { display: block; font-size: 0.75rem; font-weight: 600; color: #4b5563; margin-bottom: 4px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 0.875rem; outline: none; transition: all 0.2s; }
+        .form-group input:focus, .form-group select:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; margin-top: 24px; }
+        .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(99,102,241,0.3); }
+        .btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+        .db-note { text-align: center; margin-top: 16px; font-size: 0.75rem; color: #9ca3af; }
+        .result-container { max-width: 500px; margin: 0 auto; }
+        .result-icon { width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 40px; }
+        .result-icon.danger { background: #fee2e2; }
+        .result-icon.success { background: #d1fae5; }
+        .result-header { text-align: center; margin-bottom: 24px; }
+        .result-header h1 { color: #1f2937; margin-bottom: 8px; }
+        .result-header p { color: #6b7280; }
+        .risk-box { padding: 24px; border-radius: 12px; margin-bottom: 24px; }
+        .risk-box.high { background: #fef2f2; border: 1px solid #fecaca; }
+        .risk-box.medium { background: #fffbeb; border: 1px solid #fde68a; }
+        .risk-box.low { background: #f0fdf4; border: 1px solid #bbf7d0; }
+        .risk-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .risk-header span { color: #4b5563; font-weight: 500; }
+        .risk-value { font-size: 2rem; font-weight: bold; }
+        .risk-value.high { color: #dc2626; }
+        .risk-value.medium { color: #d97706; }
+        .risk-value.low { color: #16a34a; }
+        .progress-bar { height: 12px; background: #e5e7eb; border-radius: 6px; overflow: hidden; margin-bottom: 16px; }
+        .progress-fill { height: 100%; border-radius: 6px; transition: width 0.5s ease; }
+        .progress-fill.high { background: #dc2626; }
+        .progress-fill.medium { background: #d97706; }
+        .progress-fill.low { background: #16a34a; }
+        .risk-footer { display: flex; justify-content: space-between; align-items: center; }
+        .badge { padding: 4px 12px; border-radius: 20px; font-size: 0.875rem; font-weight: 600; }
+        .badge.high { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .badge.medium { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+        .badge.low { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+        .status { font-weight: 600; }
+        .status.churn { color: #dc2626; }
+        .status.stay { color: #16a34a; }
+        .factors { margin-bottom: 24px; }
+        .factors h3 { color: #1f2937; margin-bottom: 12px; font-size: 1rem; }
+        .factor-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #f9fafb; border-radius: 8px; margin-bottom: 8px; font-size: 0.875rem; color: #4b5563; }
+        .factor-dot { width: 8px; height: 8px; background: #6366f1; border-radius: 50%; }
+        .actions-box { background: #eef2ff; border-radius: 12px; padding: 16px; margin-bottom: 24px; }
+        .actions-box h3 { color: #3730a3; margin-bottom: 8px; font-size: 1rem; }
+        .actions-box ul { list-style: none; }
+        .actions-box li { color: #4338ca; font-size: 0.875rem; margin-bottom: 4px; }
+        .hidden { display: none !important; }
+        .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid #fff; border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <!-- Home Page -->
+    <div id="homePage" class="container">
+        <div class="header">
+            <div class="header-icon">📉</div>
+            <h1>Customer Churn Prediction</h1>
+            <p>ML-powered analysis to identify at-risk customers</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="icon">👥</div>
+                <div class="value" id="totalCustomers">0</div>
+                <div class="label">Customers Analyzed</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">⚠️</div>
+                <div class="value" id="churnCount">0</div>
+                <div class="label">Churn Predictions</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">✅</div>
+                <div class="value" id="retainedCount">0</div>
+                <div class="label">Retained</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span>📊</span>
+                <h2>Customer Information</h2>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Customer ID</label>
+                    <input type="text" id="customerId" placeholder="CUST-001">
+                </div>
+                <div class="form-group">
+                    <label>Tenure (months)</label>
+                    <input type="number" id="tenure" placeholder="12">
+                </div>
+                <div class="form-group">
+                    <label>Monthly Charges ($)</label>
+                    <input type="number" id="monthlyCharges" placeholder="70.00">
+                </div>
+                <div class="form-group">
+                    <label>Total Charges ($)</label>
+                    <input type="number" id="totalCharges" placeholder="840.00">
+                </div>
+                <div class="form-group">
+                    <label>Support Tickets</label>
+                    <input type="number" id="supportTickets" placeholder="2">
+                </div>
+                <div class="form-group">
+                    <label>Contract Type</label>
+                    <select id="contract">
+                        <option value="month">Month-to-Month</option>
+                        <option value="year">One Year</option>
+                        <option value="twoyear">Two Year</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Payment Method</label>
+                    <select id="paymentMethod">
+                        <option value="electronic">Electronic Check</option>
+                        <option value="mailed">Mailed Check</option>
+                        <option value="bank">Bank Transfer</option>
+                        <option value="credit">Credit Card</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Internet Service</label>
+                    <select id="internetService">
+                        <option value="fiber">Fiber Optic</option>
+                        <option value="dsl">DSL</option>
+                        <option value="no">No Internet</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tech Support</label>
+                    <select id="techSupport">
+                        <option value="no">No</option>
+                        <option value="yes">Yes</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Online Security</label>
+                    <select id="onlineSecurity">
+                        <option value="no">No</option>
+                        <option value="yes">Yes</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Senior Citizen</label>
+                    <select id="seniorCitizen">
+                        <option value="no">No</option>
+                        <option value="yes">Yes</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Has Dependents</label>
+                    <select id="dependents">
+                        <option value="no">No</option>
+                        <option value="yes">Yes</option>
+                    </select>
+                </div>
+            </div>
+
+            <button id="predictBtn" class="btn btn-primary" onclick="predictChurn()">
+                <span id="btnText">📉 Predict Churn Risk →</span>
+                <span id="btnLoading" class="loading hidden"></span>
+            </button>
+
+            <div class="db-note">💾 Data stored in SQLite Database (churn_prediction.db)</div>
+        </div>
+    </div>
+
+    <!-- Result Page -->
+    <div id="resultPage" class="container hidden">
+        <div class="result-container">
+            <div class="card">
+                <div id="resultIcon" class="result-icon"></div>
+                <div class="result-header">
+                    <h1>Churn Prediction Result</h1>
+                    <p>Customer: <span id="resultCustomerId"></span></p>
+                </div>
+
+                <div id="riskBox" class="risk-box">
+                    <div class="risk-header">
+                        <span>Churn Probability</span>
+                        <span id="probabilityValue" class="risk-value"></span>
+                    </div>
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
+                    <div class="risk-footer">
+                        <span id="riskBadge" class="badge"></span>
+                        <span id="churnStatus" class="status"></span>
+                    </div>
+                </div>
+
+                <div id="factorsSection" class="factors">
+                    <h3>Key Risk Factors</h3>
+                    <div id="factorsList"></div>
+                </div>
+
+                <div class="actions-box">
+                    <h3>Recommended Actions</h3>
+                    <ul id="actionsList"></ul>
+                </div>
+
+                <button class="btn btn-primary" onclick="resetForm()">
+                    🔄 Analyze Another Customer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load stats on page load
+        document.addEventListener('DOMContentLoaded', loadStats);
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+                document.getElementById('totalCustomers').textContent = data.totalCustomers;
+                document.getElementById('churnCount').textContent = data.churnCount;
+                document.getElementById('retainedCount').textContent = data.retainedCount;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        function getFormData() {
+            return {
+                customerId: document.getElementById('customerId').value || 'Unknown',
+                tenure: parseInt(document.getElementById('tenure').value) || 0,
+                monthlyCharges: parseFloat(document.getElementById('monthlyCharges').value) || 0,
+                totalCharges: parseFloat(document.getElementById('totalCharges').value) || 0,
+                supportTickets: parseInt(document.getElementById('supportTickets').value) || 0,
+                contract: document.getElementById('contract').value,
+                paymentMethod: document.getElementById('paymentMethod').value,
+                internetService: document.getElementById('internetService').value,
+                techSupport: document.getElementById('techSupport').value,
+                onlineSecurity: document.getElementById('onlineSecurity').value,
+                seniorCitizen: document.getElementById('seniorCitizen').value,
+                dependents: document.getElementById('dependents').value
+            };
+        }
+
+        async function predictChurn() {
+            const btn = document.getElementById('predictBtn');
+            const btnText = document.getElementById('btnText');
+            const btnLoading = document.getElementById('btnLoading');
+            
+            btn.disabled = true;
+            btnText.classList.add('hidden');
+            btnLoading.classList.remove('hidden');
+
+            try {
+                const data = getFormData();
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                showResult(data.customerId, result);
+                loadStats();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error making prediction. Please try again.');
+            } finally {
+                btn.disabled = false;
+                btnText.classList.remove('hidden');
+                btnLoading.classList.add('hidden');
+            }
+        }
+
+        function showResult(customerId, result) {
+            document.getElementById('homePage').classList.add('hidden');
+            document.getElementById('resultPage').classList.remove('hidden');
+
+            const iconEl = document.getElementById('resultIcon');
+            iconEl.className = `result-icon ${result.willChurn ? 'danger' : 'success'}`;
+            iconEl.textContent = result.willChurn ? '⚠️' : '✅';
+
+            document.getElementById('resultCustomerId').textContent = customerId;
+
+            const riskBox = document.getElementById('riskBox');
+            riskBox.className = `risk-box ${result.riskLevel}`;
+
+            const probEl = document.getElementById('probabilityValue');
+            probEl.textContent = result.probability + '%';
+            probEl.className = `risk-value ${result.riskLevel}`;
+
+            const progressEl = document.getElementById('progressFill');
+            progressEl.className = `progress-fill ${result.riskLevel}`;
+            setTimeout(() => progressEl.style.width = result.probability + '%', 100);
+
+            const badgeEl = document.getElementById('riskBadge');
+            badgeEl.className = `badge ${result.riskLevel}`;
+            badgeEl.textContent = result.riskLevel.charAt(0).toUpperCase() + result.riskLevel.slice(1) + ' Risk';
+
+            const statusEl = document.getElementById('churnStatus');
+            statusEl.className = `status ${result.willChurn ? 'churn' : 'stay'}`;
+            statusEl.textContent = result.willChurn ? 'Likely to Churn' : 'Likely to Stay';
+
+            const factorsList = document.getElementById('factorsList');
+            factorsList.innerHTML = result.factors.map(f => `
+                <div class="factor-item">
+                    <div class="factor-dot"></div>
+                    ${f}
+                </div>
+            `).join('');
+
+            const actionsList = document.getElementById('actionsList');
+            let actions = ['<li>• Review service quality metrics</li>'];
+            if (result.riskLevel === 'high') {
+                actions.unshift('<li>• Offer loyalty discount or upgrade</li>');
+                actions.unshift('<li>• Immediate outreach by retention team</li>');
+            } else if (result.riskLevel === 'medium') {
+                actions.unshift('<li>• Send satisfaction survey</li>');
+                actions.unshift('<li>• Schedule check-in call</li>');
+            }
+            actionsList.innerHTML = actions.join('');
+        }
+
+        function resetForm() {
+            document.getElementById('resultPage').classList.add('hidden');
+            document.getElementById('homePage').classList.remove('hidden');
+            document.getElementById('progressFill').style.width = '0%';
+
+            document.getElementById('customerId').value = '';
+            document.getElementById('tenure').value = '';
+            document.getElementById('monthlyCharges').value = '';
+            document.getElementById('totalCharges').value = '';
+            document.getElementById('supportTickets').value = '';
+            document.getElementById('contract').value = 'month';
+            document.getElementById('paymentMethod').value = 'electronic';
+            document.getElementById('internetService').value = 'fiber';
+            document.getElementById('techSupport').value = 'no';
+            document.getElementById('onlineSecurity').value = 'no';
+            document.getElementById('seniorCitizen').value = 'no';
+            document.getElementById('dependents').value = 'no';
+        }
+    </script>
+</body>
+</html>
